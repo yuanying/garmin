@@ -129,27 +129,44 @@ def activities(agent, outdir, increment = 100):
 
         for item in search:
             # Read this list of activities and save the files.
-
-            activityId = item['activityId']
-            activityDate = item['startTimeLocal'][:10]
-            url = TCX % activityId
-            file_name = '{}_{}.txt'.format(activityDate, activityId)
-            if file_exists_in_folder(file_name, output):
-                print('{} already exists in {}. Skipping.'.format(file_name, output))
-                continue
-            print('{} is downloading...'.format(file_name))
-            datafile = agent.open(url).get_data()
-            file_path = os.path.join(outdir, file_name)
-            f = open(file_path, "w")
-            f.write(datafile)
-            f.close()
-            shutil.copy(file_path, os.path.join(os.path.dirname(os.path.dirname(file_path)), file_name))
+            download('gpx', item, outdir)
+            download('tcx', item, outdir)
 
         # We still have at least 1 activity.
         currentIndex += increment
         url = ACTIVITIES % (currentIndex, increment)
         response = agent.open(url)
         search = json.loads(response.get_data())
+
+def download(type, item, outdir):
+    activityId = item['activityId']
+    activityDate = item['startTimeLocal'][:10]
+    if type=='gpx':
+        url_template = GPX
+    else:
+        url_template = TCX
+
+    url = url_template % activityId
+    file_name = '{}_{}.{}'.format(activityDate, activityId, type)
+
+    if file_exists_in_folder(file_name, output):
+        print('{} already exists in {}. Skipping.'.format(file_name, output))
+        return
+    print('{} is downloading...'.format(file_name))
+    datafile = ''
+    try:
+        datafile = agent.open(url).get_data()
+    except:
+        try:
+            datafile = agent.open(url).get_data()
+        except:
+            print("Download failed twice: {}".format(file_name))
+    
+    file_path = os.path.join(outdir, file_name)
+    f = open(file_path, "w")
+    f.write(datafile)
+    f.close()
+    shutil.copy(file_path, os.path.join(os.path.dirname(os.path.dirname(file_path)), file_name))
 
 def wellness(agent, start_date, end_date, display_name, outdir):
     url = WELLNESS % (display_name, start_date, end_date)
